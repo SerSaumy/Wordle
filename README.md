@@ -138,3 +138,8 @@ Contributions are welcome. Please feel free to:
 MIT License - Free to use for personal or educational purposes.
 
 ---
+## 🌐 Try It Online
+
+**Live Demo**: [https://YOUR_USERNAME.github.io/wordle-solver/](https://YOUR_USERNAME.github.io/wordle-solver/)
+
+No installation needed! Use it directly in your browser.
