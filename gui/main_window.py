@@ -1,793 +1,699 @@
-"""Main GUI - Complete Material Design with All Features"""
+"""Wordle Solver - Final Version with Tab Autocomplete"""
 
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
-import threading
-import time
-from bot.wordle_bot import WordleBot
-from utils.config import UPDATE_INTERVAL
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
+from tkinter import messagebox, scrolledtext
+from solver.word_bank import WordBank
+from solver.solver_engine import WordleSolver
 
 
-class MaterialUI:
+class WordleSolverGUI:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Wordle Learning Bot")
-        self.root.geometry("1400x900")
+        self.root.title("Wordle Solver")
+        self.root.geometry("1600x900")
         
-        # Material Design Colors
+        # Beautiful colors
         self.colors = {
-            'bg': '#F5F5F5',
-            'surface': '#FFFFFF',
-            'primary': '#8B7FD6',
-            'secondary': '#7FD6A0',
-            'accent': '#FF9F9F',
-            'info': '#9FDFFF',
-            'text': '#2C3E50',
-            'text_light': '#7F8C8D',
-            'success': '#7FD6A0',
-            'error': '#FF9F9F',
-            'warning': '#FFD69F'
+            'bg': '#FAFBFC',
+            'white': '#FFFFFF',
+            'border': '#E8EAED',
+            'primary': '#6366F1',
+            'primary_hover': '#4F46E5',
+            'success': '#10B981',
+            'warning': '#F59E0B',
+            'gray': '#9CA3AF',
+            'text': '#1F2937',
+            'text_light': '#6B7280',
+            'text_lighter': '#9CA3AF',
+            'input_bg': '#F9FAFB',
+            'danger': '#EF4444',
+            'hint': '#D1D5DB'
         }
         
         self.root.configure(bg=self.colors['bg'])
         
-        self.bot = None
-        self.is_learning = False
+        print("✨ Initializing Wordle Solver...")
+        self.word_bank = WordBank()
+        self.solver = WordleSolver(self.word_bank)
+        self.attempts = []
         
         self.create_ui()
-        self.setup_update_loop()
-        
-        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        print("✅ Ready!")
     
     def create_ui(self):
-        """Create complete UI with tabs"""
+        """Create scrollable UI"""
         
         # TOP BAR
-        top_bar = tk.Frame(self.root, bg=self.colors['primary'], height=70)
-        top_bar.pack(fill='x')
-        top_bar.pack_propagate(False)
+        top = tk.Frame(self.root, bg=self.colors['white'], height=90)
+        top.pack(fill='x', side='top')
+        top.pack_propagate(False)
         
-        # Title
-        title_frame = tk.Frame(top_bar, bg=self.colors['primary'])
-        title_frame.pack(side='left', padx=30, pady=15)
+        border = tk.Frame(top, bg=self.colors['border'], height=1)
+        border.pack(side='bottom', fill='x')
         
-        tk.Label(
-            title_frame,
-            text="Wordle Learning Bot",
-            font=('Segoe UI', 20, 'bold'),
-            bg=self.colors['primary'],
-            fg='white'
-        ).pack(anchor='w')
+        top_content = tk.Frame(top, bg=self.colors['white'])
+        top_content.pack(expand=True)
+        
+        logo_frame = tk.Frame(top_content, bg=self.colors['white'])
+        logo_frame.pack(side='left', padx=50)
         
         tk.Label(
-            title_frame,
-            text="Self-learning AI • Unlimited Practice Mode",
-            font=('Segoe UI', 10),
-            bg=self.colors['primary'],
-            fg='white'
-        ).pack(anchor='w')
-        
-        # Status
-        status_frame = tk.Frame(top_bar, bg=self.colors['primary'])
-        status_frame.pack(side='right', padx=30)
-        
-        self.status_dot = tk.Canvas(status_frame, width=20, height=20, bg=self.colors['primary'], highlightthickness=0)
-        self.status_dot.create_oval(2, 2, 18, 18, fill=self.colors['error'], outline='')
-        self.status_dot.pack(side='left', padx=5)
-        
-        self.status_label = tk.Label(
-            status_frame,
-            text="Offline",
-            font=('Segoe UI', 11, 'bold'),
-            bg=self.colors['primary'],
-            fg='white'
-        )
-        self.status_label.pack(side='left')
-        
-        # TABBED NOTEBOOK
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.configure('TNotebook', background=self.colors['bg'], borderwidth=0)
-        style.configure('TNotebook.Tab', 
-            background=self.colors['surface'],
-            foreground=self.colors['text'],
-            padding=[20, 10],
-            font=('Segoe UI', 10, 'bold')
-        )
-        style.map('TNotebook.Tab',
-            background=[('selected', self.colors['primary'])],
-            foreground=[('selected', 'white')]
-        )
-        
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill='both', expand=True, padx=10, pady=10)
-        
-        # Create all tabs
-        self.create_play_tab()
-        self.create_stats_tab()
-        self.create_graphs_tab()
-        self.create_words_tab()
-        self.create_log_tab()
-    
-    def create_play_tab(self):
-        """TAB 1: PLAY - Main game controls"""
-        play_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
-        self.notebook.add(play_frame, text="  PLAY  ")
-        
-        content = tk.Frame(play_frame, bg=self.colors['bg'])
-        content.pack(fill='both', expand=True, padx=20, pady=20)
-        
-        # Left: Game Board
-        left = tk.Frame(content, bg=self.colors['surface'], relief='flat')
-        left.pack(side='left', fill='both', expand=True, padx=(0, 10))
-        
-        tk.Label(
-            left,
-            text="Live Game Board",
-            font=('Segoe UI', 16, 'bold'),
-            bg=self.colors['surface'],
+            logo_frame,
+            text="Wordle",
+            font=('Segoe UI', 28, 'bold'),
+            bg=self.colors['white'],
             fg=self.colors['text']
-        ).pack(pady=20)
+        ).pack(side='left')
         
-        # Game tiles
-        tiles_container = tk.Frame(left, bg=self.colors['surface'])
-        tiles_container.pack(pady=20)
-        
-        self.tiles = []
-        for row in range(6):
-            row_tiles = []
-            row_frame = tk.Frame(tiles_container, bg=self.colors['surface'])
-            row_frame.pack(pady=4)
-            
-            for col in range(5):
-                tile = tk.Label(
-                    row_frame,
-                    text='',
-                    font=('Segoe UI', 20, 'bold'),
-                    width=3,
-                    height=1,
-                    bg='#E8E8E8',
-                    fg=self.colors['text'],
-                    relief='flat'
-                )
-                tile.pack(side='left', padx=4)
-                row_tiles.append(tile)
-            self.tiles.append(row_tiles)
-        
-        # Game info
-        info = tk.Frame(left, bg=self.colors['surface'])
-        info.pack(pady=20)
-        
-        self.game_number_label = tk.Label(
-            info,
-            text="Game: #0",
-            font=('Segoe UI', 12),
-            bg=self.colors['surface'],
+        tk.Label(
+            logo_frame,
+            text=" Solver",
+            font=('Segoe UI', 28),
+            bg=self.colors['white'],
             fg=self.colors['text_light']
-        )
-        self.game_number_label.pack(pady=3)
+        ).pack(side='left')
         
-        self.current_word_label = tk.Label(
-            info,
-            text="Current Word: -----",
-            font=('Segoe UI', 14, 'bold'),
-            bg=self.colors['surface'],
-            fg=self.colors['primary']
-        )
-        self.current_word_label.pack(pady=3)
+        stats_header = tk.Frame(top_content, bg=self.colors['white'])
+        stats_header.pack(side='right', padx=50)
         
-        self.attempt_label = tk.Label(
-            info,
-            text="Attempt: 0/6",
+        self.header_stat = tk.Label(
+            stats_header,
+            text=f"{len(self.word_bank.all_words):,} words loaded",
             font=('Segoe UI', 11),
-            bg=self.colors['surface'],
+            bg=self.colors['white'],
+            fg=self.colors['text_lighter']
+        )
+        self.header_stat.pack()
+        
+        # SCROLLABLE MAIN AREA
+        canvas_frame = tk.Frame(self.root, bg=self.colors['bg'])
+        canvas_frame.pack(fill='both', expand=True, side='top')
+        
+        self.canvas = tk.Canvas(canvas_frame, bg=self.colors['bg'], highlightthickness=0)
+        self.canvas.pack(side='left', fill='both', expand=True)
+        
+        scrollbar = tk.Scrollbar(canvas_frame, orient='vertical', command=self.canvas.yview)
+        scrollbar.pack(side='right', fill='y')
+        
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+        
+        self.scrollable_frame = tk.Frame(self.canvas, bg=self.colors['bg'])
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor='nw')
+        
+        self.scrollable_frame.bind('<Configure>', lambda e: self.canvas.configure(scrollregion=self.canvas.bbox('all')))
+        self.canvas.bind_all('<MouseWheel>', self._on_mousewheel)
+        self.canvas.bind('<Configure>', self._on_canvas_configure)
+        
+        # CONTENT
+        container = tk.Frame(self.scrollable_frame, bg=self.colors['bg'])
+        container.pack(fill='both', expand=True, padx=50, pady=30)
+        
+        # LEFT COLUMN
+        left = tk.Frame(container, bg=self.colors['bg'])
+        left.pack(side='left', fill='both', expand=True, padx=(0, 25))
+        
+        # Input Card
+        input_card = tk.Frame(left, bg=self.colors['white'])
+        input_card.pack(fill='x', pady=(0, 20))
+        
+        tk.Label(
+            input_card,
+            text="Enter Your Guess",
+            font=('Segoe UI', 18, 'bold'),
+            bg=self.colors['white'],
+            fg=self.colors['text']
+        ).pack(anchor='w', padx=30, pady=(25, 5))
+        
+        tk.Label(
+            input_card,
+            text="Type the word you guessed in Wordle",
+            font=('Segoe UI', 12),
+            bg=self.colors['white'],
+            fg=self.colors['text_light']
+        ).pack(anchor='w', padx=30, pady=(0, 20))
+        
+        # Word input with placeholder
+        word_container = tk.Frame(input_card, bg=self.colors['white'])
+        word_container.pack(fill='x', padx=30, pady=(0, 10))
+        
+        self.word_entry = tk.Entry(
+            word_container,
+            font=('Segoe UI', 24, 'bold'),
+            bg=self.colors['input_bg'],
+            fg=self.colors['text'],
+            relief='flat',
+            bd=0,
+            insertbackground=self.colors['primary']
+        )
+        self.word_entry.pack(fill='x', ipady=15, ipadx=20)
+        
+        # Bind Tab and Enter
+        self.word_entry.bind('<Return>', self.on_word_enter)
+        self.word_entry.bind('<Tab>', self.on_word_tab)
+        
+        # Keyboard hints
+        hints_frame = tk.Frame(input_card, bg=self.colors['white'])
+        hints_frame.pack(fill='x', padx=30, pady=(5, 20))
+        
+        tk.Label(
+            hints_frame,
+            text="⌨ ",
+            font=('Segoe UI', 10),
+            bg=self.colors['white'],
+            fg=self.colors['hint']
+        ).pack(side='left')
+        
+        tk.Label(
+            hints_frame,
+            text="Tab",
+            font=('Segoe UI', 9, 'bold'),
+            bg=self.colors['hint'],
+            fg='white',
+            padx=6,
+            pady=2
+        ).pack(side='left', padx=(0, 5))
+        
+        tk.Label(
+            hints_frame,
+            text="= use suggestion  •  ",
+            font=('Segoe UI', 10),
+            bg=self.colors['white'],
+            fg=self.colors['text_lighter']
+        ).pack(side='left')
+        
+        tk.Label(
+            hints_frame,
+            text="Enter",
+            font=('Segoe UI', 9, 'bold'),
+            bg=self.colors['hint'],
+            fg='white',
+            padx=6,
+            pady=2
+        ).pack(side='left', padx=(0, 5))
+        
+        tk.Label(
+            hints_frame,
+            text="= use typed word",
+            font=('Segoe UI', 10),
+            bg=self.colors['white'],
+            fg=self.colors['text_lighter']
+        ).pack(side='left')
+        
+        # Feedback section
+        tk.Label(
+            input_card,
+            text="Enter Feedback Pattern",
+            font=('Segoe UI', 18, 'bold'),
+            bg=self.colors['white'],
+            fg=self.colors['text']
+        ).pack(anchor='w', padx=30, pady=(10, 5))
+        
+        tk.Label(
+            input_card,
+            text="Use: G (Green), Y (Yellow), B (Black/Gray)",
+            font=('Segoe UI', 12),
+            bg=self.colors['white'],
+            fg=self.colors['text_light']
+        ).pack(anchor='w', padx=30, pady=(0, 5))
+        
+        example_frame = tk.Frame(input_card, bg='#F0F9FF')
+        example_frame.pack(fill='x', padx=30, pady=(5, 20))
+        
+        tk.Label(
+            example_frame,
+            text='💡 Example: "GYBBB" = Green, Yellow, Black, Black, Black',
+            font=('Segoe UI', 11),
+            bg='#F0F9FF',
+            fg='#1E40AF'
+        ).pack(anchor='w', padx=15, pady=10)
+        
+        feedback_container = tk.Frame(input_card, bg=self.colors['white'])
+        feedback_container.pack(fill='x', padx=30, pady=(0, 10))
+        
+        self.feedback_entry = tk.Entry(
+            feedback_container,
+            font=('Segoe UI', 24, 'bold'),
+            bg=self.colors['input_bg'],
+            fg=self.colors['text'],
+            relief='flat',
+            bd=0,
+            insertbackground=self.colors['primary']
+        )
+        self.feedback_entry.pack(fill='x', ipady=15, ipadx=20)
+        self.feedback_entry.bind('<Return>', lambda e: self.process())
+        
+        # Feedback hint
+        feedback_hint = tk.Frame(input_card, bg=self.colors['white'])
+        feedback_hint.pack(fill='x', padx=30, pady=(5, 25))
+        
+        tk.Label(
+            feedback_hint,
+            text="⌨ ",
+            font=('Segoe UI', 10),
+            bg=self.colors['white'],
+            fg=self.colors['hint']
+        ).pack(side='left')
+        
+        tk.Label(
+            feedback_hint,
+            text="Enter",
+            font=('Segoe UI', 9, 'bold'),
+            bg=self.colors['hint'],
+            fg='white',
+            padx=6,
+            pady=2
+        ).pack(side='left', padx=(0, 5))
+        
+        tk.Label(
+            feedback_hint,
+            text="= analyze guess",
+            font=('Segoe UI', 10),
+            bg=self.colors['white'],
+            fg=self.colors['text_lighter']
+        ).pack(side='left')
+        
+        # Buttons
+        buttons_row = tk.Frame(input_card, bg=self.colors['white'])
+        buttons_row.pack(fill='x', padx=30, pady=(15, 30))
+        
+        self.submit_btn = tk.Button(
+            buttons_row,
+            text="✓ Analyze Guess",
+            font=('Segoe UI', 15, 'bold'),
+            bg=self.colors['primary'],
+            fg='white',
+            activebackground=self.colors['primary_hover'],
+            activeforeground='white',
+            command=self.process,
+            cursor='hand2',
+            relief='flat',
+            bd=0
+        )
+        self.submit_btn.pack(side='left', fill='x', expand=True, ipady=14, padx=(0, 10))
+        
+        self.submit_btn.bind('<Enter>', lambda e: self.submit_btn.config(bg=self.colors['primary_hover']))
+        self.submit_btn.bind('<Leave>', lambda e: self.submit_btn.config(bg=self.colors['primary']))
+        
+        self.undo_btn = tk.Button(
+            buttons_row,
+            text="↶ Undo Last",
+            font=('Segoe UI', 15, 'bold'),
+            bg=self.colors['danger'],
+            fg='white',
+            activebackground='#DC2626',
+            activeforeground='white',
+            command=self.undo_last,
+            cursor='hand2',
+            relief='flat',
+            bd=0,
+            state='disabled'
+        )
+        self.undo_btn.pack(side='right', fill='x', expand=True, ipady=14, padx=(10, 0))
+        
+        self.undo_btn.bind('<Enter>', lambda e: self.undo_btn.config(bg='#DC2626') if self.undo_btn['state'] == 'normal' else None)
+        self.undo_btn.bind('<Leave>', lambda e: self.undo_btn.config(bg=self.colors['danger']) if self.undo_btn['state'] == 'normal' else None)
+        
+        # History Card
+        history_card = tk.Frame(left, bg=self.colors['white'])
+        history_card.pack(fill='both', expand=True)
+        
+        history_header = tk.Frame(history_card, bg=self.colors['white'])
+        history_header.pack(fill='x', padx=30, pady=(25, 15))
+        
+        tk.Label(
+            history_header,
+            text="Attempt History",
+            font=('Segoe UI', 18, 'bold'),
+            bg=self.colors['white'],
+            fg=self.colors['text']
+        ).pack(side='left')
+        
+        self.attempt_count_label = tk.Label(
+            history_header,
+            text="0 attempts",
+            font=('Segoe UI', 12),
+            bg=self.colors['white'],
             fg=self.colors['text_light']
         )
-        self.attempt_label.pack(pady=3)
+        self.attempt_count_label.pack(side='right')
         
-        # Right: Controls
-        right = tk.Frame(content, bg=self.colors['surface'], relief='flat')
-        right.pack(side='right', fill='both', expand=True, padx=(10, 0))
+        history_container = tk.Frame(history_card, bg=self.colors['white'])
+        history_container.pack(fill='both', expand=True, padx=30, pady=(0, 25))
         
-        tk.Label(
-            right,
-            text="Bot Controls",
-            font=('Segoe UI', 16, 'bold'),
-            bg=self.colors['surface'],
-            fg=self.colors['text']
-        ).pack(pady=20)
-        
-        btn_container = tk.Frame(right, bg=self.colors['surface'])
-        btn_container.pack(pady=20, padx=40, fill='x')
-        
-        # Start button
-        self.start_btn = tk.Button(
-            btn_container,
-            text="▶  START BOT",
-            font=('Segoe UI', 16, 'bold'),
-            bg=self.colors['success'],
-            fg='white',
+        self.history_text = tk.Text(
+            history_container,
+            font=('Consolas', 14),
+            bg=self.colors['input_bg'],
+            fg=self.colors['text'],
             relief='flat',
-            padx=50,
+            bd=0,
+            padx=20,
             pady=20,
-            command=self.start_bot,
-            cursor='hand2',
-            activebackground='#6FC690'
+            height=10
         )
-        self.start_btn.pack(pady=8, fill='x')
+        self.history_text.pack(fill='both', expand=True)
         
-        # Stop button
-        self.stop_btn = tk.Button(
-            btn_container,
-            text="■  STOP BOT",
-            font=('Segoe UI', 16, 'bold'),
-            bg=self.colors['error'],
-            fg='white',
-            relief='flat',
-            padx=50,
-            pady=20,
-            command=self.stop_bot,
-            state='disabled',
-            cursor='hand2',
-            activebackground='#FF8F8F'
-        )
-        self.stop_btn.pack(pady=8, fill='x')
+        self.history_text.tag_config('green', foreground=self.colors['success'], font=('Consolas', 14, 'bold'))
+        self.history_text.tag_config('yellow', foreground=self.colors['warning'], font=('Consolas', 14, 'bold'))
+        self.history_text.tag_config('gray', foreground=self.colors['gray'], font=('Consolas', 14, 'bold'))
+        self.history_text.tag_config('number', foreground=self.colors['text_lighter'], font=('Consolas', 12))
         
-        # Divider
-        tk.Frame(right, bg='#E0E0E0', height=2).pack(fill='x', padx=40, pady=20)
+        # RIGHT COLUMN
+        right = tk.Frame(container, bg=self.colors['bg'])
+        right.pack(side='right', fill='both', expand=True, padx=(25, 0))
+        
+        # Suggestion Card
+        suggest_card = tk.Frame(right, bg=self.colors['white'])
+        suggest_card.pack(fill='x', pady=(0, 20))
         
         tk.Label(
-            right,
-            text="Quick Play",
-            font=('Segoe UI', 14, 'bold'),
-            bg=self.colors['surface'],
-            fg=self.colors['text']
-        ).pack(pady=10)
-        
-        # Game buttons
-        game_btns = tk.Frame(right, bg=self.colors['surface'])
-        game_btns.pack(padx=40, fill='x')
-        
-        for count in [1, 5, 10, 25, 50, 100]:
-            tk.Button(
-                game_btns,
-                text=f"{count} Game{'s' if count > 1 else ''}",
-                font=('Segoe UI', 12),
-                bg=self.colors['info'],
-                fg='white',
-                relief='flat',
-                padx=30,
-                pady=12,
-                command=lambda c=count: self.play_games(c),
-                cursor='hand2',
-                activebackground='#8FCFEF'
-            ).pack(pady=4, fill='x')
-        
-        # Vocabulary display
-        tk.Frame(right, bg='#E0E0E0', height=2).pack(fill='x', padx=40, pady=20)
-        
-        vocab_frame = tk.Frame(right, bg=self.colors['info'], relief='flat')
-        vocab_frame.pack(padx=40, pady=10, fill='x')
-        
-        tk.Label(
-            vocab_frame,
-            text="Vocabulary Size",
-            font=('Segoe UI', 10),
-            bg=self.colors['info'],
-            fg='white'
-        ).pack(pady=(15, 5))
-        
-        self.vocab_display_label = tk.Label(
-            vocab_frame,
-            text="0",
-            font=('Segoe UI', 32, 'bold'),
-            bg=self.colors['info'],
-            fg='white'
-        )
-        self.vocab_display_label.pack(pady=(5, 15))
-    
-    def create_stats_tab(self):
-        """TAB 2: STATS - Performance metrics"""
-        stats_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
-        self.notebook.add(stats_frame, text="  STATISTICS  ")
-        
-        tk.Label(
-            stats_frame,
-            text="Performance Metrics",
+            suggest_card,
+            text="Recommended Word",
             font=('Segoe UI', 18, 'bold'),
-            bg=self.colors['bg'],
+            bg=self.colors['white'],
             fg=self.colors['text']
-        ).pack(pady=20)
+        ).pack(anchor='w', padx=30, pady=(25, 5))
         
-        # Stats grid
-        grid = tk.Frame(stats_frame, bg=self.colors['bg'])
-        grid.pack(fill='x', padx=30, pady=10)
+        tk.Label(
+            suggest_card,
+            text="Press Tab in word field to use this",
+            font=('Segoe UI', 11),
+            bg=self.colors['white'],
+            fg=self.colors['text_light']
+        ).pack(anchor='w', padx=30, pady=(0, 15))
         
-        self.stat_widgets = {}
-        stats_data = [
-            ('total', 'Total Games', '0', self.colors['primary']),
-            ('wins', 'Games Won', '0', self.colors['success']),
-            ('losses', 'Games Lost', '0', self.colors['error']),
-            ('rate', 'Win Rate', '0%', self.colors['accent']),
-            ('vocab', 'Vocabulary', '0', self.colors['info']),
-            ('avg', 'Avg Attempts', '0.0', self.colors['warning']),
+        suggest_container = tk.Frame(suggest_card, bg='#EEF2FF')
+        suggest_container.pack(fill='x', padx=30, pady=(0, 25))
+        
+        self.suggestion_label = tk.Label(
+            suggest_container,
+            text="SOARE",
+            font=('Segoe UI', 56, 'bold'),
+            bg='#EEF2FF',
+            fg=self.colors['primary'],
+            cursor='hand2'
+        )
+        self.suggestion_label.pack(pady=30)
+        self.suggestion_label.bind('<Button-1>', lambda e: self.copy_suggestion())
+        
+        # Stats Card
+        stats_card = tk.Frame(right, bg=self.colors['white'])
+        stats_card.pack(fill='x', pady=(0, 20))
+        
+        tk.Label(
+            stats_card,
+            text="Statistics",
+            font=('Segoe UI', 18, 'bold'),
+            bg=self.colors['white'],
+            fg=self.colors['text']
+        ).pack(anchor='w', padx=30, pady=(25, 20))
+        
+        stats_grid = tk.Frame(stats_card, bg=self.colors['white'])
+        stats_grid.pack(fill='x', padx=30, pady=(0, 25))
+        
+        self.stat_labels = {}
+        stats = [
+            ('possible', 'Possible Words', '12,972', self.colors['primary']),
+            ('attempts', 'Attempts Made', '0', self.colors['success']),
+            ('eliminated', 'Words Eliminated', '0', self.colors['text_light'])
         ]
         
-        for i in range(0, len(stats_data), 3):
-            row = tk.Frame(grid, bg=self.colors['bg'])
-            row.pack(fill='x', pady=5)
+        for key, label, value, color in stats:
+            stat_row = tk.Frame(stats_grid, bg=self.colors['input_bg'])
+            stat_row.pack(fill='x', pady=3)
             
-            for j in range(3):
-                if i + j < len(stats_data):
-                    key, label, value, color = stats_data[i + j]
-                    card = self.create_stat_card_large(row, label, value, color)
-                    card.pack(side='left', fill='both', expand=True, padx=5)
-                    self.stat_widgets[key] = card
+            tk.Label(
+                stat_row,
+                text=label,
+                font=('Segoe UI', 12),
+                bg=self.colors['input_bg'],
+                fg=self.colors['text_light'],
+                anchor='w'
+            ).pack(side='left', padx=20, pady=12)
+            
+            val_label = tk.Label(
+                stat_row,
+                text=value,
+                font=('Segoe UI', 18, 'bold'),
+                bg=self.colors['input_bg'],
+                fg=color,
+                anchor='e'
+            )
+            val_label.pack(side='right', padx=20, pady=12)
+            
+            self.stat_labels[key] = val_label
         
-        # Recent games
-        tk.Label(
-            stats_frame,
-            text="Recent Games",
-            font=('Segoe UI', 14, 'bold'),
-            bg=self.colors['bg'],
-            fg=self.colors['text']
-        ).pack(pady=(20, 10))
+        # Words Card
+        words_card = tk.Frame(right, bg=self.colors['white'])
+        words_card.pack(fill='both', expand=True)
         
-        recent_frame = tk.Frame(stats_frame, bg=self.colors['surface'])
-        recent_frame.pack(fill='both', expand=True, padx=30, pady=10)
-        
-        self.recent_games_text = scrolledtext.ScrolledText(
-            recent_frame,
-            font=('Consolas', 10),
-            bg=self.colors['surface'],
-            fg=self.colors['text'],
-            height=15,
-            relief='flat'
-        )
-        self.recent_games_text.pack(fill='both', expand=True, padx=10, pady=10)
-    
-    def create_graphs_tab(self):
-        """TAB 3: GRAPHS - Visual analytics"""
-        graphs_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
-        self.notebook.add(graphs_frame, text="  GRAPHS  ")
+        words_header = tk.Frame(words_card, bg=self.colors['white'])
+        words_header.pack(fill='x', padx=30, pady=(25, 10))
         
         tk.Label(
-            graphs_frame,
-            text="Learning Analytics",
+            words_header,
+            text="Possible Words",
             font=('Segoe UI', 18, 'bold'),
-            bg=self.colors['bg'],
+            bg=self.colors['white'],
             fg=self.colors['text']
-        ).pack(pady=20)
-        
-        # Create matplotlib figures
-        fig_container = tk.Frame(graphs_frame, bg=self.colors['bg'])
-        fig_container.pack(fill='both', expand=True, padx=20, pady=10)
-        
-        # Learning curve
-        left_graph = tk.Frame(fig_container, bg=self.colors['surface'])
-        left_graph.pack(side='left', fill='both', expand=True, padx=(0, 5))
-        
-        tk.Label(
-            left_graph,
-            text="Vocabulary Growth",
-            font=('Segoe UI', 12, 'bold'),
-            bg=self.colors['surface'],
-            fg=self.colors['text']
-        ).pack(pady=10)
-        
-        self.fig1 = Figure(figsize=(6, 4), dpi=80, facecolor='white')
-        self.ax1 = self.fig1.add_subplot(111)
-        self.canvas1 = FigureCanvasTkAgg(self.fig1, left_graph)
-        self.canvas1.get_tk_widget().pack(fill='both', expand=True, padx=10, pady=10)
-        
-        # Win rate
-        right_graph = tk.Frame(fig_container, bg=self.colors['surface'])
-        right_graph.pack(side='right', fill='both', expand=True, padx=(5, 0))
-        
-        tk.Label(
-            right_graph,
-            text="Win Rate Over Time",
-            font=('Segoe UI', 12, 'bold'),
-            bg=self.colors['surface'],
-            fg=self.colors['text']
-        ).pack(pady=10)
-        
-        self.fig2 = Figure(figsize=(6, 4), dpi=80, facecolor='white')
-        self.ax2 = self.fig2.add_subplot(111)
-        self.canvas2 = FigureCanvasTkAgg(self.fig2, right_graph)
-        self.canvas2.get_tk_widget().pack(fill='both', expand=True, padx=10, pady=10)
-        
-        # Initialize empty graphs
-        self.update_empty_graphs()
-    
-    def create_words_tab(self):
-        """TAB 4: WORDS - Learned vocabulary"""
-        words_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
-        self.notebook.add(words_frame, text="  VOCABULARY  ")
-        
-        header = tk.Frame(words_frame, bg=self.colors['bg'])
-        header.pack(fill='x', pady=20)
-        
-        tk.Label(
-            header,
-            text="Learned Words",
-            font=('Segoe UI', 18, 'bold'),
-            bg=self.colors['bg'],
-            fg=self.colors['text']
-        ).pack()
+        ).pack(side='left')
         
         self.words_count_label = tk.Label(
-            header,
-            text="0 words learned",
-            font=('Segoe UI', 12),
-            bg=self.colors['bg'],
-            fg=self.colors['text_light']
+            words_header,
+            text="12,972",
+            font=('Segoe UI', 14, 'bold'),
+            bg=self.colors['white'],
+            fg=self.colors['primary']
         )
-        self.words_count_label.pack(pady=5)
+        self.words_count_label.pack(side='right')
         
-        # Search box
-        search_frame = tk.Frame(words_frame, bg=self.colors['bg'])
-        search_frame.pack(fill='x', padx=30, pady=10)
-        
-        tk.Label(
-            search_frame,
-            text="Search:",
-            font=('Segoe UI', 10),
-            bg=self.colors['bg'],
-            fg=self.colors['text']
-        ).pack(side='left', padx=5)
-        
-        self.word_search = tk.Entry(
-            search_frame,
-            font=('Segoe UI', 11),
-            bg=self.colors['surface'],
-            fg=self.colors['text'],
-            relief='flat'
-        )
-        self.word_search.pack(side='left', fill='x', expand=True, padx=5)
-        self.word_search.bind('<KeyRelease>', lambda e: self.filter_words())
-        
-        # Words display
-        words_container = tk.Frame(words_frame, bg=self.colors['surface'])
-        words_container.pack(fill='both', expand=True, padx=30, pady=10)
+        words_container = tk.Frame(words_card, bg=self.colors['white'])
+        words_container.pack(fill='both', expand=True, padx=30, pady=(0, 25))
         
         self.words_text = scrolledtext.ScrolledText(
             words_container,
-            font=('Segoe UI', 10),
-            bg=self.colors['surface'],
+            font=('Consolas', 11),
+            bg=self.colors['input_bg'],
             fg=self.colors['text'],
-            wrap='word',
-            relief='flat'
-        )
-        self.words_text.pack(fill='both', expand=True, padx=10, pady=10)
-    
-    def create_log_tab(self):
-        """TAB 5: LOG - Activity log"""
-        log_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
-        self.notebook.add(log_frame, text="  ACTIVITY LOG  ")
-        
-        tk.Label(
-            log_frame,
-            text="Activity Log",
-            font=('Segoe UI', 18, 'bold'),
-            bg=self.colors['bg'],
-            fg=self.colors['text']
-        ).pack(pady=20)
-        
-        # Log controls
-        controls = tk.Frame(log_frame, bg=self.colors['bg'])
-        controls.pack(fill='x', padx=30, pady=10)
-        
-        tk.Button(
-            controls,
-            text="Clear Log",
-            font=('Segoe UI', 10),
-            bg=self.colors['error'],
-            fg='white',
             relief='flat',
-            padx=20,
-            pady=8,
-            command=lambda: self.log_text.delete('1.0', 'end'),
-            cursor='hand2'
-        ).pack(side='right')
-        
-        # Log display
-        log_container = tk.Frame(log_frame, bg=self.colors['surface'])
-        log_container.pack(fill='both', expand=True, padx=30, pady=10)
-        
-        self.log_text = scrolledtext.ScrolledText(
-            log_container,
-            font=('Consolas', 9),
-            bg='#1E1E1E',
-            fg='#00FF00',
+            bd=0,
             wrap='word',
-            relief='flat'
+            padx=15,
+            pady=15,
+            height=15
         )
-        self.log_text.pack(fill='both', expand=True, padx=10, pady=10)
+        self.words_text.pack(fill='both', expand=True)
         
-        # Color tags
-        self.log_text.tag_config('info', foreground='#00BFFF')
-        self.log_text.tag_config('success', foreground='#00FF00')
-        self.log_text.tag_config('error', foreground='#FF0000')
-        self.log_text.tag_config('warning', foreground='#FFA500')
-    
-    def create_stat_card_large(self, parent, label, value, color):
-        """Create large stat card"""
-        card = tk.Frame(parent, bg=color, relief='flat')
+        # Bottom actions
+        bottom_frame = tk.Frame(self.scrollable_frame, bg=self.colors['bg'])
+        bottom_frame.pack(fill='x', padx=50, pady=(20, 25))
         
-        tk.Label(
-            card,
-            text=label,
-            font=('Segoe UI', 11),
-            bg=color,
-            fg='white'
-        ).pack(pady=(15, 5))
-        
-        value_label = tk.Label(
-            card,
-            text=value,
-            font=('Segoe UI', 28, 'bold'),
-            bg=color,
-            fg='white'
+        reset_btn = tk.Button(
+            bottom_frame,
+            text="↻  Start New Game",
+            font=('Segoe UI', 13, 'bold'),
+            bg=self.colors['white'],
+            fg=self.colors['text'],
+            activebackground=self.colors['input_bg'],
+            command=self.reset,
+            cursor='hand2',
+            relief='flat',
+            bd=1,
+            borderwidth=1,
+            highlightbackground=self.colors['border'],
+            highlightthickness=1
         )
-        value_label.pack(pady=(5, 15))
+        reset_btn.pack(side='left', padx=5, pady=5, ipadx=20, ipady=10)
         
-        return value_label
-    
-    def setup_update_loop(self):
-        """Setup periodic updates"""
         self.update_display()
     
-    def update_display(self):
-        """Update all displays"""
-        if self.bot and self.bot.is_running:
-            state = self.bot.get_current_state()
-            self.update_game_board(state)
-            self.update_statistics(state)
-            self.update_graphs(state)
-            self.update_vocabulary(state)
-        
-        self.root.after(UPDATE_INTERVAL, self.update_display)
+    def on_word_enter(self, event):
+        """Enter pressed in word field - move to feedback with typed word"""
+        self.feedback_entry.focus()
+        return 'break'
     
-    def update_game_board(self, state):
-        """Update game board"""
-        current_game = state.get('current_game')
-        
-        # Reset board
-        for row in self.tiles:
-            for tile in row:
-                tile.config(text='', bg='#E8E8E8')
-        
-        if current_game:
-            game_num = current_game.get('game_number', 0)
-            self.game_number_label.config(text=f"Game: #{game_num}")
-            
-            attempts = current_game.get('attempts', [])
-            self.attempt_label.config(text=f"Attempt: {len(attempts)}/6")
-            
-            # Display attempts
-            for attempt in attempts:
-                row_idx = attempt['attempt'] - 1
-                if row_idx >= 6:
-                    continue
-                    
-                word = attempt['word']
-                feedback = attempt['feedback']
-                
-                for col, (letter, fb) in enumerate(zip(word, feedback)):
-                    tile = self.tiles[row_idx][col]
-                    tile.config(text=letter.upper())
-                    
-                    status = fb.get('status', 'empty')
-                    if status == 'correct':
-                        tile.config(bg=self.colors['success'], fg='white')
-                    elif status == 'present':
-                        tile.config(bg=self.colors['warning'], fg='white')
-                    elif status == 'absent':
-                        tile.config(bg='#999999', fg='white')
-            
-            if attempts:
-                last_word = attempts[-1]['word']
-                self.current_word_label.config(text=f"Current Word: {last_word.upper()}")
-        
-        vocab = state.get('vocabulary_size', 0)
-        self.vocab_display_label.config(text=f"{vocab:,}")
+    def on_word_tab(self, event):
+        """Tab pressed in word field - use suggestion and move to feedback"""
+        suggestion = self.suggestion_label.cget('text')
+        self.word_entry.delete(0, tk.END)
+        self.word_entry.insert(0, suggestion)
+        self.feedback_entry.focus()
+        return 'break'  # Prevent default tab behavior
     
-    def update_statistics(self, state):
-        """Update statistics"""
-        stats = state['statistics']
-        
-        self.stat_widgets['total'].config(text=str(stats['total_games']))
-        self.stat_widgets['wins'].config(text=str(stats['games_won']))
-        self.stat_widgets['losses'].config(text=str(stats['games_lost']))
-        
-        rate = (stats['games_won'] / stats['total_games'] * 100) if stats['total_games'] > 0 else 0
-        self.stat_widgets['rate'].config(text=f"{rate:.1f}%")
-        
-        self.stat_widgets['vocab'].config(text=str(state['vocabulary_size']))
-        
-        avg = (stats['total_attempts'] / stats['games_won']) if stats['games_won'] > 0 else 0
-        self.stat_widgets['avg'].config(text=f"{avg:.2f}")
-        
-        # Update recent games
-        curve = stats.get('learning_curve', [])
-        if curve:
-            self.recent_games_text.delete('1.0', 'end')
-            self.recent_games_text.insert('1.0', "GAME  |  VOCAB  |  RESULT\n")
-            self.recent_games_text.insert('end', "-" * 40 + "\n")
-            
-            for point in curve[-20:]:
-                game = point['game']
-                vocab = point['vocabulary']
-                result = "WON " if point['won'] else "LOST"
-                self.recent_games_text.insert('end', f"#{game:3d}  |  {vocab:5d}  |  {result}\n")
+    def _on_mousewheel(self, event):
+        """Handle mousewheel"""
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
     
-    def update_graphs(self, state):
-        """Update graphs"""
-        stats = state['statistics']
-        curve = stats.get('learning_curve', [])
+    def _on_canvas_configure(self, event):
+        """Canvas resize"""
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
+    
+    def process(self):
+        """Process input"""
+        word = self.word_entry.get().strip().upper()
+        feedback_str = self.feedback_entry.get().strip().upper()
         
-        if not curve or len(curve) < 2:
+        if len(word) != 5:
+            messagebox.showerror("Invalid Input", "Word must be exactly 5 letters")
             return
         
-        # Vocabulary growth
-        games = [p['game'] for p in curve]
-        vocab = [p['vocabulary'] for p in curve]
-        
-        self.ax1.clear()
-        self.ax1.plot(games, vocab, color=self.colors['primary'], linewidth=2.5)
-        self.ax1.set_xlabel('Games Played', fontsize=10)
-        self.ax1.set_ylabel('Words Learned', fontsize=10)
-        self.ax1.grid(True, alpha=0.3)
-        self.ax1.set_facecolor('#FAFAFA')
-        self.fig1.tight_layout()
-        self.canvas1.draw()
-        
-        # Win rate
-        if len(curve) > 5:
-            window = min(10, len(curve))
-            wins = [1 if p['won'] else 0 for p in curve]
-            rolling = []
-            for i in range(len(wins)):
-                start = max(0, i - window + 1)
-                rolling.append(sum(wins[start:i+1]) / (i - start + 1) * 100)
-            
-            self.ax2.clear()
-            self.ax2.plot(games, rolling, color=self.colors['success'], linewidth=2.5)
-            self.ax2.set_xlabel('Games Played', fontsize=10)
-            self.ax2.set_ylabel('Win Rate (%)', fontsize=10)
-            self.ax2.set_ylim(0, 100)
-            self.ax2.grid(True, alpha=0.3)
-            self.ax2.set_facecolor('#FAFAFA')
-            self.fig2.tight_layout()
-            self.canvas2.draw()
-    
-    def update_empty_graphs(self):
-        """Show empty graph placeholders"""
-        self.ax1.text(0.5, 0.5, 'Play games to see\nvocabulary growth', 
-                     ha='center', va='center', transform=self.ax1.transAxes, fontsize=12)
-        self.ax1.set_facecolor('#FAFAFA')
-        self.canvas1.draw()
-        
-        self.ax2.text(0.5, 0.5, 'Play games to see\nwin rate progression', 
-                     ha='center', va='center', transform=self.ax2.transAxes, fontsize=12)
-        self.ax2.set_facecolor('#FAFAFA')
-        self.canvas2.draw()
-    
-    def update_vocabulary(self, state):
-        """Update vocabulary display"""
-        vocab = state.get('vocabulary_size', 0)
-        self.words_count_label.config(text=f"{vocab:,} words learned")
-        
-        words = state.get('learned_words', [])
-        if words:
-            self.words_text.delete('1.0', 'end')
-            sorted_words = sorted(words)
-            
-            # Display in columns
-            words_per_line = 8
-            for i in range(0, len(sorted_words), words_per_line):
-                line_words = sorted_words[i:i+words_per_line]
-                self.words_text.insert('end', '  '.join(line_words) + '\n')
-    
-    def filter_words(self):
-        """Filter vocabulary by search term"""
-        if not self.bot:
+        if not self.word_bank.is_valid(word.lower()):
+            messagebox.showerror("Invalid Word", f"'{word}' is not in our dictionary")
             return
         
-        search_term = self.word_search.get().lower()
-        state = self.bot.get_current_state()
-        all_words = state.get('learned_words', [])
-        
-        if search_term:
-            filtered = [w for w in all_words if search_term in w.lower()]
-        else:
-            filtered = all_words
-        
-        self.words_text.delete('1.0', 'end')
-        sorted_words = sorted(filtered)
-        
-        words_per_line = 8
-        for i in range(0, len(sorted_words), words_per_line):
-            line_words = sorted_words[i:i+words_per_line]
-            self.words_text.insert('end', '  '.join(line_words) + '\n')
-    
-    def log(self, message, tag='info'):
-        """Add to log"""
-        timestamp = time.strftime("%H:%M:%S")
-        self.log_text.insert('end', f"[{timestamp}] {message}\n", tag)
-        self.log_text.see('end')
-    
-    def start_bot(self):
-        """Start bot"""
-        if self.is_learning:
+        if len(feedback_str) != 5:
+            messagebox.showerror("Invalid Feedback", "Feedback must be 5 characters (G/Y/B)")
             return
         
-        self.log("Starting bot...", 'info')
-        self.bot = WordleBot()
-        
-        def start_thread():
-            if self.bot.start():
-                self.is_learning = True
-                self.start_btn.config(state='disabled')
-                self.stop_btn.config(state='normal')
-                self.status_dot.delete('all')
-                self.status_dot.create_oval(2, 2, 18, 18, fill=self.colors['success'])
-                self.status_label.config(text="Online")
-                self.log("Bot started! Browser opened successfully.", 'success')
+        feedback = []
+        for i, char in enumerate(feedback_str):
+            if char == 'G':
+                status = 'correct'
+            elif char == 'Y':
+                status = 'present'
+            elif char == 'B':
+                status = 'absent'
             else:
-                self.log("Failed to start bot", 'error')
-                messagebox.showerror("Error", "Could not start browser.\n\nMake sure Firefox, Edge, or Chrome is installed.")
+                messagebox.showerror("Invalid Character", f"Use only G, Y, or B (not '{char}')")
+                return
+            
+            feedback.append({
+                'letter': word[i].lower(),
+                'status': status,
+                'position': i
+            })
         
-        threading.Thread(target=start_thread, daemon=True).start()
-    
-    def stop_bot(self):
-        """Stop bot"""
-        if self.bot:
-            self.log("Stopping bot...", 'warning')
-            self.bot.stop()
-            self.is_learning = False
-            self.start_btn.config(state='normal')
-            self.stop_btn.config(state='disabled')
-            self.status_dot.delete('all')
-            self.status_dot.create_oval(2, 2, 18, 18, fill=self.colors['error'])
-            self.status_label.config(text="Offline")
-            self.log("Bot stopped", 'info')
-    
-    def play_games(self, count):
-        """Play games"""
-        if not self.is_learning:
-            messagebox.showwarning("Warning", "Please start the bot first!")
+        if all(fb['status'] == 'correct' for fb in feedback):
+            messagebox.showinfo("🎉 Solved!", f"Puzzle solved in {len(self.attempts) + 1} attempts!\n\nThe word was: {word}")
             return
         
-        self.log(f"Starting session: {count} games", 'info')
+        self.solver.process_feedback(word.lower(), feedback)
+        self.attempts.append((word, feedback_str))
         
-        def play_thread():
-            try:
-                self.bot.play_multiple_games(count)
-                self.log(f"Session complete! Played {count} games.", 'success')
-            except Exception as e:
-                self.log(f"Error during gameplay: {e}", 'error')
+        self.word_entry.delete(0, tk.END)
+        self.feedback_entry.delete(0, tk.END)
+        self.word_entry.focus()
         
-        threading.Thread(target=play_thread, daemon=True).start()
+        self.undo_btn.config(state='normal')
+        
+        self.display_history()
+        self.update_display()
+        
+        if len(self.solver.possible_words) == 0:
+            messagebox.showwarning("No Matches", "No words match your feedback.\n\nPlease check your input.")
     
-    def on_closing(self):
-        """Handle close"""
-        if self.is_learning:
-            if messagebox.askokcancel("Quit", "Bot is running. Stop and quit?"):
-                if self.bot:
-                    self.bot.stop()
-                self.root.destroy()
+    def undo_last(self):
+        """Undo last attempt"""
+        if not self.attempts:
+            return
+        
+        self.attempts.pop()
+        self.solver.reset()
+        
+        for word, feedback_str in self.attempts:
+            feedback = []
+            for i, char in enumerate(feedback_str):
+                if char == 'G':
+                    status = 'correct'
+                elif char == 'Y':
+                    status = 'present'
+                else:
+                    status = 'absent'
+                
+                feedback.append({
+                    'letter': word[i].lower(),
+                    'status': status,
+                    'position': i
+                })
+            
+            self.solver.process_feedback(word.lower(), feedback)
+        
+        if len(self.attempts) == 0:
+            self.undo_btn.config(state='disabled')
+        
+        self.display_history()
+        self.update_display()
+    
+    def display_history(self):
+        """Display history"""
+        self.history_text.delete('1.0', 'end')
+        
+        if not self.attempts:
+            self.history_text.insert('end', "No attempts yet. Enter your first guess above!")
+            self.attempt_count_label.config(text="0 attempts")
+            return
+        
+        self.attempt_count_label.config(text=f"{len(self.attempts)} attempt{'s' if len(self.attempts) > 1 else ''}")
+        
+        for i, (word, feedback_str) in enumerate(self.attempts):
+            self.history_text.insert('end', f"  {i+1}.  ", 'number')
+            
+            for j, letter in enumerate(word):
+                char = feedback_str[j]
+                if char == 'G':
+                    self.history_text.insert('end', f"{letter} ", 'green')
+                elif char == 'Y':
+                    self.history_text.insert('end', f"{letter} ", 'yellow')
+                else:
+                    self.history_text.insert('end', f"{letter} ", 'gray')
+            
+            self.history_text.insert('end', '\n')
+    
+    def copy_suggestion(self):
+        """Copy suggestion"""
+        word = self.suggestion_label.cget('text')
+        self.word_entry.delete(0, tk.END)
+        self.word_entry.insert(0, word)
+        self.word_entry.focus()
+    
+    def update_display(self):
+        """Update display"""
+        best, count = self.solver.get_best_guess()
+        
+        if best:
+            self.suggestion_label.config(text=best.upper())
+        
+        total = len(self.word_bank.all_words)
+        eliminated = total - count
+        
+        self.stat_labels['possible'].config(text=f"{count:,}")
+        self.stat_labels['attempts'].config(text=str(len(self.attempts)))
+        self.stat_labels['eliminated'].config(text=f"{eliminated:,}")
+        
+        self.words_count_label.config(text=f"{count:,}")
+        self.header_stat.config(text=f"{count:,} possible • {len(self.attempts)} attempts")
+        
+        words = self.solver.get_possible_words()
+        self.words_text.delete('1.0', 'end')
+        
+        if len(words) == 0:
+            self.words_text.insert('end', "No words match your feedback!")
+        elif len(words) <= 200:
+            for i in range(0, len(words), 5):
+                line = '  '.join([w.upper().ljust(6) for w in words[i:i+5]])
+                self.words_text.insert('end', line + '\n')
         else:
-            self.root.destroy()
+            self.words_text.insert('end', f"Showing 150 of {len(words):,} words\n\n")
+            for i in range(0, 150, 5):
+                line = '  '.join([w.upper().ljust(6) for w in words[i:i+5]])
+                self.words_text.insert('end', line + '\n')
+    
+    def reset(self):
+        """Reset game"""
+        if self.attempts:
+            if not messagebox.askyesno("Start New Game", "This will clear all your progress. Continue?"):
+                return
+        
+        self.solver.reset()
+        self.attempts = []
+        self.word_entry.delete(0, tk.END)
+        self.feedback_entry.delete(0, tk.END)
+        self.history_text.delete('1.0', 'end')
+        self.undo_btn.config(state='disabled')
+        self.update_display()
+        self.display_history()
+        self.canvas.yview_moveto(0)
     
     def run(self):
         """Run app"""
         self.root.mainloop()
-
-
-# Alias
-MainWindow = MaterialUI
