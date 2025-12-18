@@ -127,6 +127,100 @@ class WordleSolver {
         ].filter(w => w.length === 5);
     }
     
+    calculateLetterFrequency() {
+        const letterFreq = {};
+        const positionFreq = [{}, {}, {}, {}, {}];
+        
+        this.possibleWords.forEach(word => {
+            for (let i = 0; i < 5; i++) {
+                const letter = word[i];
+                letterFreq[letter] = (letterFreq[letter] || 0) + 1;
+                positionFreq[i][letter] = (positionFreq[i][letter] || 0) + 1;
+            }
+        });
+        
+        return { letterFreq, positionFreq };
+    }
+    
+    scoreWord(word) {
+        const { letterFreq, positionFreq } = this.calculateLetterFrequency();
+        let score = 0;
+        const usedLetters = new Set();
+        
+        for (let i = 0; i < 5; i++) {
+            const letter = word[i];
+            
+            const posScore = positionFreq[i][letter] || 0;
+            score += posScore * 2;
+            
+            if (!usedLetters.has(letter)) {
+                const freqScore = letterFreq[letter] || 0;
+                score += freqScore;
+                usedLetters.add(letter);
+            }
+        }
+        
+        const uniqueLetters = new Set(word.split('')).size;
+        score += uniqueLetters * 50;
+        
+        const vowels = (word.match(/[aeiou]/g) || []).length;
+        if (vowels >= 2 && vowels <= 3) {
+            score += 100;
+        }
+        
+        const commonPairs = ['st', 'th', 'ch', 'sh', 'er', 'an', 'in', 'on', 'at', 'or'];
+        commonPairs.forEach(pair => {
+            if (word.includes(pair)) {
+                score += 30;
+            }
+        });
+        
+        return score;
+    }
+    
+    getBestSuggestion() {
+        if (this.possibleWords.length === 0) {
+            if (this.lastValidSuggestions.length > 1) {
+                return this.lastValidSuggestions[1];
+            }
+            return this.lastValidSuggestions[0] || 'raise';
+        }
+        
+        if (this.possibleWords.length === 1) {
+            return this.possibleWords[0];
+        }
+        
+        if (this.attempts.length === 0) {
+            const topStarters = ['soare', 'roate', 'raise', 'arise', 'irate', 'slate', 'crane', 'stare'];
+            for (const starter of topStarters) {
+                if (this.possibleWords.includes(starter)) {
+                    return starter;
+                }
+            }
+        }
+        
+        if (this.possibleWords.length <= 20) {
+            const scoredWords = this.possibleWords.map(word => ({
+                word,
+                score: this.scoreWord(word)
+            }));
+            
+            scoredWords.sort((a, b) => b.score - a.score);
+            
+            return scoredWords[0].word;
+        }
+        
+        const sample = this.possibleWords.slice(0, Math.min(100, this.possibleWords.length));
+        const scoredWords = sample.map(word => ({
+            word,
+            score: this.scoreWord(word)
+        }));
+        
+        scoredWords.sort((a, b) => b.score - a.score);
+        
+        return scoredWords[0].word;
+    }
+    
     setupEventListeners() {
         const wordInput = document.getElementById('wordInput');
         const feedbackInput = document.getElementById('feedbackInput');
@@ -282,33 +376,6 @@ class WordleSolver {
             
             return true;
         });
-    }
-    
-    getBestSuggestion() {
-        if (this.possibleWords.length > 0) {
-            if (this.possibleWords.length === 1) {
-                return this.possibleWords[0];
-            }
-            
-            if (this.attempts.length === 0) {
-                const starters = ['soare', 'roate', 'raise', 'slate', 'crane', 'stare', 'trace'];
-                for (const starter of starters) {
-                    if (this.possibleWords.includes(starter)) return starter;
-                }
-            }
-            
-            return this.possibleWords[0];
-        }
-        
-        if (this.lastValidSuggestions.length > 1) {
-            return this.lastValidSuggestions[1];
-        }
-        
-        if (this.lastValidSuggestions.length > 0) {
-            return this.lastValidSuggestions[0];
-        }
-        
-        return 'raise';
     }
     
     updateDisplay() {

@@ -62,17 +62,22 @@ header {
 
 main {
     flex: 1;
-    padding: 40px 0;
+    padding: 40px 0 20px 0;
 }
 
 .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 32px;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 }
 
-.left-column, .right-column {
+.left-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.right-column {
     display: flex;
     flex-direction: column;
 }
@@ -387,9 +392,21 @@ main {
 
 .bottom-actions {
     text-align: center;
-    margin-top: 16px;
-    margin-bottom: 32px;
+    margin: 0 0 30px 0;
+    padding: 0;
 }
+
+.reset-action {
+    text-align: center;
+    margin: 0 0 40px 0;
+    padding: 0;
+}
+
+.reset-action .btn {
+    min-width: 280px;
+    font-size: 15px;
+}
+
 
 .bottom-actions .btn {
     min-width: 280px;
@@ -400,7 +417,7 @@ footer {
     background-color: #FFFFFF;
     border-top: 2px solid #8BAE66;
     padding: 24px 0;
-    margin-top: 32px;
+    margin-top: 20px;
     text-align: center;
     font-size: 14px;
     color: #628141;
