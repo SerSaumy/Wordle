@@ -11,9 +11,14 @@
     <title>Wordle Solver - AI Assistant</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
+    
+    <link rel="preconnect" href="https://gist.githubusercontent.com">
+    <link rel="dns-prefetch" href="https://gist.githubusercontent.com">
 </head>
 <body>
-    <header>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <header role="banner">
         <div class="container">
             <div class="header-content">
                 <div class="logo">
@@ -46,11 +51,12 @@
                     <h2 id="input-heading">Enter Your Guess</h2>
                     <p class="description">Type the word you guessed in Wordle</p>
                     
+                    <label for="wordInput" class="visually-hidden">Your 5-letter word guess</label>
                     <input 
                         type="text" 
-                        id="wordInputDesktop" 
+                        id="wordInput" 
                         class="input-field" 
-                        placeholder="Type word here..."
+                        placeholder="TYPE HERE"
                         maxlength="5"
                         autocomplete="off"
                         autocapitalize="characters"
@@ -72,9 +78,9 @@
                     <label for="feedbackInput" class="visually-hidden">Feedback pattern (G, Y, or B)</label>
                     <input 
                         type="text" 
-                        id="feedbackInputDesktop" 
+                        id="feedbackInput" 
                         class="input-field" 
-                        placeholder="e.g., GYBBB"
+                        placeholder="GYBBB"
                         maxlength="5"
                         autocomplete="off"
                         autocapitalize="characters"
@@ -111,7 +117,7 @@
                     <div id="historyContainer" class="history-container" role="log" aria-live="polite" aria-atomic="false">
                         <p class="empty-state">No attempts yet</p>
                     </div>
-                </div>
+                </section>
             </div>
 
             <div class="right-column">
@@ -120,9 +126,15 @@
                     <p class="description">Press Tab to use this word</p>
                     
                     <div class="suggestion-box">
-                        <div id="suggestion" class="suggestion-word">SOARE</div>
+                        <div 
+                            id="suggestion" 
+                            class="suggestion-word" 
+                            role="button" 
+                            tabindex="0"
+                            aria-label="Click to copy suggested word"
+                        >SOARE</div>
                     </div>
-                </div>
+                </section>
 
                 <section class="card card-compact" aria-labelledby="stats-heading">
                     <h2 id="stats-heading">Stats</h2>
@@ -140,7 +152,7 @@
                             <span id="eliminatedCount" class="stat-value" aria-live="polite">0</span>
                         </div>
                     </div>
-                </div>
+                </section>
 
                 <section class="card card-compact" aria-labelledby="words-heading">
                     <div class="card-header">
@@ -157,26 +169,6 @@
                         Loading words...
                     </div>
                 </section>
-            </div>
-        </div>
-
-        <!-- Mobile Stats (Below Input) -->
-        <div class="mobile-stats">
-            <div class="stat-box">
-                <span id="possibleCountMobile" class="stat-num">12k</span>
-                <span class="stat-label">Possible</span>
-            </div>
-            <div class="stat-box">
-                <span id="attemptsCountMobile" class="stat-num">0</span>
-                <span class="stat-label">Tries</span>
-            </div>
-        </div>
-
-        <!-- Mobile History -->
-        <div class="mobile-history">
-            <h3>History <span id="attemptCountMobile" class="badge">0</span></h3>
-            <div id="historyContainerMobile" class="history-list">
-                <p class="empty-text">No attempts yet</p>
             </div>
         </div>
     </main>
