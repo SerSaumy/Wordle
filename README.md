@@ -29,11 +29,11 @@ A fast and efficient solver that provides optimal word suggestions to help you w
 ### Installation
 
 1. **Clone the repository:**
-git clone https://github.com/sersaumy/wordle-solver.git
-cd wordle-solver
+```git clone https://github.com/sersaumy/wordle-solver.git```
+```cd wordle-solver```
 
 2. **Run the application:**
-python main.py
+```python main.py```
 
 No additional dependencies required. Uses built-in Tkinter.
 
@@ -43,7 +43,7 @@ No additional dependencies required. Uses built-in Tkinter.
 
 ### Basic Workflow
 
-1. **Launch the application** - Run `python main.py`
+1. **Launch the application** - Run ```python main.py```
 2. **View suggestion** - The solver displays the optimal word (e.g., "SOARE")
 3. **Play Wordle** - Enter that word in your Wordle game
 4. **Enter feedback:**
@@ -82,27 +82,6 @@ Attempt 3: FLINT -> Feedback: GGGGG (Solved)
 - Real-time statistics
 - Undo last attempt
 - Scrollable interface
-
----
-
-## Project Structure
-
-wordle-solver/
-├── solver/
-│   ├── __init__.py
-│   ├── word_bank.py          # 12,972 word database
-│   └── solver_engine.py      # Core algorithm
-├── gui/
-│   ├── __init__.py
-│   └── main_window.py        # User interface
-├── data/
-│   ├── wordle_answers.txt    # Official answers (2,309)
-│   └── valid_guesses.txt     # Valid guesses (10,663)
-├── main.py                   # Entry point
-├── README.md
-└── .gitignore
-
----
 
 ## How It Works
 
@@ -159,47 +138,3 @@ Contributions are welcome. Please feel free to:
 MIT License - Free to use for personal or educational purposes.
 
 ---
-
-## Why This Solver
-
-| Advantage | Description |
-|-----------|-------------|
-| No Dependencies | Works with standard Python installation |
-| Fast Input | Text-based feedback instead of clicking |
-| Smart Suggestions | Information theory ensures optimal guesses |
-| Error Recovery | Undo function for mistake correction |
-| Keyboard-First | Streamlined workflow with shortcuts |
-
----
-
-## Acknowledgments
-
-- Word lists from official [NYT Wordle](https://www.nytimes.com/games/wordle/)
-- Algorithm inspired by [3Blue1Brown's Wordle analysis](https://www.youtube.com/watch?v=v68zYyaEmEA)
-
----
-
-## Roadmap
-
-- [ ] Hard mode support
-- [ ] Statistics export
-- [ ] Word difficulty ratings
-- [ ] Dark mode toggle
-- [ ] Web version
-
----
-
-## Contact
-
-**Author**: sersaumy
-
-- GitHub: [@sersaumy](https://github.com/sersaumy)
-- Repository: [https://github.com/sersaumy/wordle-solver](https://github.com/sersaumy/wordle-solver)
-
----
-
-If you found this project helpful, consider starring the repository.
-
----
-
-Made for Wordle enthusiasts
