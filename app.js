@@ -11,7 +11,53 @@ class WordleSolver {
             yellowNot: {}
         };
         
+        this.usageData = this.loadUsageData();
+        
         this.init();
+    }
+    
+    loadUsageData() {
+        const stored = localStorage.getItem('wordleUsageData');
+        if (stored) {
+            return JSON.parse(stored);
+        }
+        return {
+            wordSuccessRate: {},
+            wordUsageCount: {},
+            positionSuccess: {},
+            averageAttempts: [],
+            totalGames: 0
+        };
+    }
+    
+    saveUsageData() {
+        localStorage.setItem('wordleUsageData', JSON.stringify(this.usageData));
+    }
+    
+    logWordPerformance(word, wasSuccessful, attemptNumber) {
+        if (!this.usageData.wordSuccessRate[word]) {
+            this.usageData.wordSuccessRate[word] = { success: 0, total: 0 };
+        }
+        
+        this.usageData.wordSuccessRate[word].total++;
+        if (wasSuccessful) {
+            this.usageData.wordSuccessRate[word].success++;
+        }
+        
+        this.usageData.wordUsageCount[word] = (this.usageData.wordUsageCount[word] || 0) + 1;
+        
+        this.saveUsageData();
+    }
+    
+    logGameComplete(totalAttempts) {
+        this.usageData.averageAttempts.push(totalAttempts);
+        this.usageData.totalGames++;
+        
+        if (this.usageData.averageAttempts.length > 100) {
+            this.usageData.averageAttempts.shift();
+        }
+        
+        this.saveUsageData();
     }
     
     async init() {
@@ -175,6 +221,12 @@ class WordleSolver {
             }
         });
         
+        if (this.usageData.wordSuccessRate[word]) {
+            const data = this.usageData.wordSuccessRate[word];
+            const successRate = data.success / data.total;
+            score += successRate * 200;
+        }
+        
         return score;
     }
     
@@ -269,12 +321,12 @@ class WordleSolver {
         const feedback = document.getElementById('feedbackInput').value.trim().toUpperCase();
         
         if (word.length !== 5) {
-            alert('Word must be exactly 5 letters!');
+            alert('Word must be exactly 5 letters');
             return;
         }
         
         if (!this.isValidWord(word)) {
-            const response = confirm(`"${word.toUpperCase()}" is not in our dictionary.\n\nDo you want to add it and continue?`);
+            const response = confirm('Word not in dictionary. Add it and continue?');
             if (response) {
                 this.allWords.push(word);
                 this.possibleWords.push(word);
@@ -284,17 +336,19 @@ class WordleSolver {
         }
         
         if (feedback.length !== 5) {
-            alert('Feedback must be 5 characters (G/Y/B)!');
+            alert('Feedback must be 5 characters');
             return;
         }
         
         if (!/^[GYB]+$/.test(feedback)) {
-            alert('Feedback must only contain G, Y, or B!');
+            alert('Feedback must only contain G, Y, or B');
             return;
         }
         
         if (feedback === 'GGGGG') {
-            alert(`🎉 Solved in ${this.attempts.length + 1} attempts!\n\nThe word was: ${word.toUpperCase()}`);
+            this.logWordPerformance(word, true, this.attempts.length + 1);
+            this.logGameComplete(this.attempts.length + 1);
+            alert(`Solved in ${this.attempts.length + 1} attempts. The word was ${word.toUpperCase()}`);
             return;
         }
         
@@ -304,6 +358,8 @@ class WordleSolver {
         
         this.applyFeedback(word, feedback);
         this.attempts.push({ word, feedback });
+        
+        this.logWordPerformance(word, false, this.attempts.length);
         
         document.getElementById('wordInput').value = '';
         document.getElementById('feedbackInput').value = '';
@@ -315,7 +371,7 @@ class WordleSolver {
         this.updateDisplay();
         
         if (this.possibleWords.length === 0) {
-            alert('⚠️ No exact matches found!\n\nUsing next best suggestion from previous list.');
+            alert('No exact matches found. Using next best suggestion from previous list.');
         }
     }
     
@@ -390,11 +446,11 @@ class WordleSolver {
         document.getElementById('attemptsCount').textContent = this.attempts.length;
         document.getElementById('eliminatedCount').textContent = eliminated.toLocaleString();
         document.getElementById('wordsCount').textContent = possible.toLocaleString();
-        document.getElementById('headerStats').textContent = `${possible.toLocaleString()} possible • ${this.attempts.length} attempts`;
+        document.getElementById('headerStats').textContent = `${possible.toLocaleString()} possible ${this.attempts.length} attempts`;
         
         const wordsList = document.getElementById('wordsList');
         if (possible === 0) {
-            wordsList.textContent = 'No exact matches! Using fallback suggestions.';
+            wordsList.textContent = 'No exact matches. Using fallback suggestions.';
         } else if (possible <= 200) {
             let html = '';
             for (let i = 0; i < possible; i += 5) {
@@ -417,7 +473,7 @@ class WordleSolver {
         const count = document.getElementById('attemptCount');
         
         if (this.attempts.length === 0) {
-            container.innerHTML = '<p class="empty-state">No attempts yet. Enter your first guess above!</p>';
+            container.innerHTML = '<p class="empty-state">No attempts yet. Enter your first guess above</p>';
             count.textContent = '0 attempts';
             return;
         }
